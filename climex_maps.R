@@ -11,7 +11,7 @@ library (ggplot2)
 
 
 # Read the csv table output from CLIMEX
-spp1975 <- read.csv ("./data/models/ECB_Europe.csv")
+spp1975 <- read.csv ("./data/models/TO_NAmerica.csv")
 sppext <- c(min(spp1975$Longitude), max(spp1975$Longitude), min(spp1975$Latitude), max(spp1975$Latitude))
 
 ##threshold for EI values used in binary presence/absence maps.
@@ -28,16 +28,14 @@ r1 <- crop(r1, extent(sppext))
 fishnet <- readOGR("./data/CM10_Fishnet_V1.2.shp")
 fishnet <- fishnet[which(fishnet$Location %in% spp1975$Location),]
 
-#fishnet <- crop(fishnet, extent(sppext))
-#aus <- readOGR("./data/Aus_admin.shp")
-
+## join fishnet locations to the spdf
 spdf1975 <- merge(fishnet, spp1975, by.x="Location")
 
-## Ecoclimatic index raster
+## Ecoclimatic index raster (old way - slower)
 #system.time(spp1975R_EI <- rasterize(spdf1975, r1, field="EI", fun='last'))
 
 ###################################################
-
+## new way - quicker
 ## This code taken from: http://gis.stackexchange.com/questions/213225/processing-vector-to-raster-faster-with-r?newreg=eefcb4ac453d4fd781a30c2f9dd63828
 
 # Load 'parallel' package for support Parallel computation in R
@@ -65,19 +63,12 @@ stopCluster(cl)
 # Merge all raster parts
 spp1975R_EI <- do.call(merge, rParts)
 
-# Plot raster
-plot(spp1975R_EI)
-
 ## Growth Index Raster
 cl <- makeCluster(no_cores, type = "FORK")
 system.time(rParts <- parLapply(cl = cl, X = 1:n, fun = function(x) rasterize(spdf1975[parts[[x]],], r1, 'GI')))
 stopCluster(cl)
 spp1975R_GI <- do.call(merge, rParts)
 
-
-
-## Growth Index raster
-spp1975R_GI <- rasterize(spdf1975, r1, field="GI", fun='last')
 
 #######################################################################################
 ### Plotting
@@ -90,8 +81,8 @@ gplot(spp1975R_EI) +
   labs(x = "Latitude", y="Longitude") +
   scale_fill_continuous(low="white", high="dark red")+
   coord_equal()+
-  ggtitle("Ecoclimatic Index - European Corn Borer")
-ggsave(file="./maps/ECB_Europe_EI.png", last_plot())
+  ggtitle("Ecoclimatic Index - T. ostriniae")
+ggsave(file="./maps/TO_NAmerica_EI.png", last_plot())
 
 gplot(spp1975R_GI) +
   geom_raster(aes(fill = value)) +
@@ -100,6 +91,6 @@ gplot(spp1975R_GI) +
   labs(x = "Latitude", y="Longitude") +
   scale_fill_continuous(low="white", high="dark green")+
   coord_equal()+
-  ggtitle("Growth Index - European Corn Borer")
-ggsave(file="./maps/ECB_Europe_GI.png", last_plot())
+  ggtitle("Growth Index - T. ostriniae")
+ggsave(file="./maps/TO_NAmerica_GI.png", last_plot())
 
